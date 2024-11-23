@@ -67,7 +67,8 @@ class force:
         
     def inform(self):
         for member in self.forces:
-            member.force=self.forces[member]
+            for universe in self.existsIn:
+                universe.particles[member]+=self.forces[member]
             
 
 class universe:
@@ -78,22 +79,23 @@ class universe:
         self.timeStep=timeStep
         self.maxDistanceStep=maxDistanceStep
         self.forces=[]
-        self.particles=[]
+        self.particles={}
         
     def acceptForce(self,force):
         self.forces.append(force)
+        
     def acceptParticle(self,particle):
-        self.particles.append(particle)
+        self.particles[particle]=particle.force
         
     def evolve(self,timeStep):
         numDivs=1
-        distancesMoved={particle:0 for particle in self.particles}
+        self.particles={particle:0 for particle in self.particles}
         for force in self.forces:
-                    force.update()
-                    force.inform()
+            force.update()
+            force.inform()
         for particle in self.particles:
-            distancesMoved[particle]=abs(particle.nextParticleStep(timeStep))
-        if max(distancesMoved.values())>self.maxDistanceStep:
+            particle.force=self.particles[particle]
+        if max([particle.nextParticleStep(timeStep) for particle in self.particles])>self.maxDistanceStep:
             numDivs-=1
             numDivs+=self.evolve(timeStep/2)
             numDivs+=self.evolve(timeStep/2)
