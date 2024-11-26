@@ -12,6 +12,22 @@ def subsystems(s,n):
         return [[]]
     return [[s[a]]+b for a in range(len(s)) for b in subsystems(s[a+1:],n-1)]
 
+class unitVector:
+    def __init__(self,components):
+        self.components=components
+        self.magnitude=1
+        
+    
+class vector:
+    def __init__(self,components):
+        self.components=components
+        self.magnitude=magnitude(components)
+        self.direction=unitVector(components/self.magnitude)
+
+def vectorFrom(point1,point2):
+    return vector([point2[d]-point1[d] for d in range(len(point1))])
+        
+
 class particle:
     def __init__(self,x,xdot,m,free=True):
         self.name=id(self)
