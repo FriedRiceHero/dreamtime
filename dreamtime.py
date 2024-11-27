@@ -16,6 +16,12 @@ class vector:
     def __init__(self,components:list[float]):
         self.components=components
         self.dim=len(self.components)
+    
+    def magnitude(self):
+        return magnitude(self.components)
+        
+    def __repr__(self):
+        return 'Vector: {}'.format(str(self.components))
 
     def __getitem__(self,key:int):
         return self.components[key]
@@ -26,14 +32,11 @@ class vector:
     def __iter__(self):
         return iter(self.components)
     
-    def __len__(self):
-        return magnitude(self.components)
-    
     def __add__(self,y):
         return vector([self.components[d]+y[d] for d in range(self.dim)])
-    
+
     def __radd__(self,y):
-        return self.__add__(self,y)
+        return self.__add__(y)
     
     def __sub__(self,y):
         return vector([self.components[d]-y[d] for d in range(self.dim)])
@@ -45,7 +48,7 @@ class vector:
         return vector([component*y for component in self.components])
     
     def __rmul__(self,y):
-        return self.__mul__(self,y)
+        return self.__mul__(y)
 
     def __truediv__(self,y):
         return vector([component/y for component in self.components])
@@ -53,32 +56,34 @@ class vector:
     def __neg__(self):
         return vector([-component for component in self.components])
     
-    def __getattr__(self,y):
+    def __matmul__(self,y):
         return sum([self.components[d]*y[d] for d in range(self.dim)])
-    
 
     def direction(self):
-        return vector(self/len(self))
+        return self/self.magnitude()
+
     
 
-def vectorFrom(point1,point2):
-    return vector([point2[d]-point1[d] for d in range(len(point1))])
+
+
+def zeroVector(d):
+    return vector([0 for _ in range(d)])
         
 
 class particle:
     def __init__(self,x,xdot,m,free=True):
         self.name=id(self)
         self.x=vector([x]) if isinstance(x,(int,float)) else vector(x)
-        self.path=[x]
+        self.path=[self.x]
         self.xdot=vector([xdot]) if isinstance(x,(int,float)) else vector(xdot)
         if m==0:
             raise RelativityError('particles must have mass wink wink')
         self.m=m
-        if not len(x)==len(xdot):
+        if not self.x.dim==self.xdot.dim:
             raise DimensionMismatch('specify the same number of dimensions for position and velocity')
-        self.nDim=len(x)
-        self.force=vector([0 for _ in range(self.nDim)])
-        self.nextStep=vector([0 for _ in range(self.nDIm)])
+        self.nDim=self.x.dim
+        self.force=zeroVector(self.nDim)
+        self.nextStep=zeroVector(self.nDim)
         self.feels=[]
         self.free=free
         self.charges={}
@@ -93,18 +98,17 @@ class particle:
             
     def nextParticleStep(self,step):
         if self.free:
-            self.nextStep=[(self.xdot[d]+0.5*(self.force[d]/self.m)*step)*step for d in range(self.nDim)]
+            self.nextStep=(self.xdot+0.5*(self.force/self.m)*step)*step
             return self.nextStep
         else:
-            return 0
+            return zeroVector(self.nDim)
         
     def particleStep(self,step):
         if self.free:
-            self.x=[self.x[d]+self.nextStep[d] for d in range(self.nDim)]
-            self.xdot=[self.xdot[d]+(self.force[d]/self.m)*step for d in range (self.nDim)]
-            self.path.append(self.x)
+            self.x=self.x+self.nextStep
+            self.xdot=self.xdot+(self.force/self.m)*step
         else:
-            self.path.append(self.x)
+            pass
         
 
 class force:
@@ -112,20 +116,18 @@ class force:
         
         self.form=form
         self.nBody=nBody
-        self.existsIn=[]
         self.particlesForces={}
         self.subsystems=[]
         self.nDim=0
         
     def join(self,universe):
         universe.acceptForce(self)
-        self.existsIn.append(universe)
+        self.universe=universe
         self.nDim=universe.nDim
 
     def accept(self,particle):
-        for universe in self.existsIn:
-            universe.acceptParticle(particle)
-        self.particlesForces[particle]=0
+        self.universe.acceptParticle(particle)
+        self.particlesForces[particle]=particle.force
     def getSubsystems(self):
         self.subsystems=subsystems(list(self.particlesForces.keys()),self.nBody)
         
@@ -135,13 +137,13 @@ class force:
         for subsystem in self.subsystems:
             newForce=self.form(*subsystem)
             for member in subsystem:
-                if len(newForce[member])!=member.nDim:
+                if newForce[member].dim!=member.nDim:
                     raise DimensionMismatch('force {} acts on {} in {} dimensions, wants {}'.format(self,member,len(newForce[member]),member.nDim))
                 
     def update(self):
-        updatedparticlesForces={member: 0 for member in self.particlesForces}
         if len(self.particlesForces)<self.nBody:
             pass
+        updatedparticlesForces={member:zeroVector(self.nDim) for member in self.particlesForces}
         for subsystem in self.subsystems:
             newForce=self.form(*subsystem)
             for member in subsystem:
@@ -149,9 +151,8 @@ class force:
         self.particlesForces=updatedparticlesForces
         
     def inform(self):
-        for member in self.forces:
-            for universe in self.existsIn:
-                universe.particles[member]+=self.forces[member]
+        for member in self.particlesForces:
+            self.universe.particlesForces[member]+=self.particlesForces[member]
 
 
 class universe:
@@ -175,7 +176,7 @@ class universe:
         
     def evolve(self,timeStep):
         numDivs=1
-        self.particlesForces={particle:0 for particle in self.particlesForces}
+        self.particlesForces={particle:zeroVector(self.nDim) for particle in self.particlesForces}
         for interaction in self.interactions:
             interaction.update()
             interaction.inform()
@@ -189,7 +190,6 @@ class universe:
             for particle in self.particlesForces:
                 particle.particleStep(timeStep)
             self.time+=timeStep
-            self.times.append(self.time)
         return numDivs
     
     def dreamtime(self):
@@ -197,7 +197,11 @@ class universe:
         for interaction in self.interactions:
             interaction.getSubsystems()
             interaction.trialStep()
+        n=0
         while self.time<self.endOfTheUniverse:
-            n=self.evolve(self.timeStep)
-            if n>=1024:
-                print('time {} took {} segments to calculate               '.format(self.time,n),end='\r')
+            
+            n+=self.evolve(self.timeStep)
+            for particle in self.particlesForces:
+                particle.path.append(particle.x)
+            self.times.append(self.time)
+        print(f'took a total of {n} cycles')
