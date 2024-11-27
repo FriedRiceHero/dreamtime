@@ -12,17 +12,54 @@ def subsystems(s,n):
         return [[]]
     return [[s[a]]+b for a in range(len(s)) for b in subsystems(s[a+1:],n-1)]
 
-class unitVector:
-    def __init__(self,components):
-        self.components=components
-        self.magnitude=1
-        
-    
 class vector:
-    def __init__(self,components):
+    def __init__(self,components:list[float]):
         self.components=components
-        self.magnitude=magnitude(components)
-        self.direction=unitVector(components/self.magnitude)
+        self.dim=len(self.components)
+
+    def __getitem__(self,key:int):
+        return self.components[key]
+    
+    def __setitem__(self,key:int,value):
+        self.components[key]=value
+    
+    def __iter__(self):
+        return iter(self.components)
+    
+    def __len__(self):
+        return magnitude(self.components)
+    
+    def __add__(self,y):
+        return vector([self.components[d]+y[d] for d in range(self.dim)])
+    
+    def __radd__(self,y):
+        return self.__add__(self,y)
+    
+    def __sub__(self,y):
+        return vector([self.components[d]-y[d] for d in range(self.dim)])
+    
+    def __rsub__(self,y):
+        return vector([y[d]-self.components[d] for d in range(self.dim)])
+    
+    def __mul__(self,y):
+        return vector([component*y for component in self.components])
+    
+    def __rmul__(self,y):
+        return self.__mul__(self,y)
+
+    def __truediv__(self,y):
+        return vector([component/y for component in self.components])
+    
+    def __neg__(self):
+        return vector([-component for component in self.components])
+    
+    def __getattr__(self,y):
+        return sum([self.components[d]*y[d] for d in range(self.dim)])
+    
+
+    def direction(self):
+        return vector(self/len(self))
+    
 
 def vectorFrom(point1,point2):
     return vector([point2[d]-point1[d] for d in range(len(point1))])
@@ -31,17 +68,17 @@ def vectorFrom(point1,point2):
 class particle:
     def __init__(self,x,xdot,m,free=True):
         self.name=id(self)
-        self.x=[x] if isinstance(x,(int,float)) else x
+        self.x=vector([x]) if isinstance(x,(int,float)) else vector(x)
         self.path=[x]
-        self.xdot=[xdot] if isinstance(x,(int,float)) else xdot
+        self.xdot=vector([xdot]) if isinstance(x,(int,float)) else vector(xdot)
         if m==0:
             raise RelativityError('particles must have mass wink wink')
         self.m=m
         if not len(x)==len(xdot):
             raise DimensionMismatch('specify the same number of dimensions for position and velocity')
         self.nDim=len(x)
-        self.force=[0 for _ in range(self.nDim)]
-        self.nextStep=[0 for _ in range(self.nDIm)]
+        self.force=vector([0 for _ in range(self.nDim)])
+        self.nextStep=vector([0 for _ in range(self.nDIm)])
         self.feels=[]
         self.free=free
         self.charges={}
