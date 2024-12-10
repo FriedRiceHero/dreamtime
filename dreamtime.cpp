@@ -23,39 +23,39 @@ struct vector {
         return sqrt(res);
     }
 
-    vector direction(){
-        vector<N> res=*this/this->magnitude();
+    vector hat(){
+        vector<N> res=this->operator/(this->magnitude());
         return res;
     }
 
-    friend vector operator+(vector<N> u, vector<N> v){
+    vector operator+(vector<N> v){
         vector<N> res;
         for(int i=0;i<N;i++){
-            res[i]=u[i]+v[i];
+            res[i]=x[i]+v[i];
         }
         return res;
     }
 
-    friend vector operator-(vector<N> u, vector<N> v){
+    vector operator-(vector<N> v){
         vector <N> res;
         for(int i=0;i<N;i++){
-            res[i]=u[i]-v[i];
+            res[i]=x[i]-v[i];
         }
         return res;
     }
 
-    friend vector operator-(vector<N> v){
+    vector operator-(){
         vector <N> res;
         for(int i=0;i<N;i++){
-            res[i]=-v[i];
+            res[i]=-x[i];
         }
         return res;
     }
 
-    friend vector operator*(vector<N> v,double y){
+    vector operator*(double y){
         vector<N> res;
         for(int i=0;i<N;i++){
-            res[i]=y*v[i];
+            res[i]=y*x[i];
         }
         return res;
     }
@@ -64,18 +64,18 @@ struct vector {
         return v*y;
     }
 
-    friend double operator*(vector<N> u,vector<N> v){
+    double operator*(vector<N> v){
         double res=0;
         for(int i=0;i<N;i++){
-            res=res+u[i]*v[i];
+            res=res+x[i]*v[i];
         }
         return res;
     }
 
-    friend vector operator/(vector<N> v, double y){
+    vector operator/( double y){
         vector<N> res;
         for(int i=0;i<N;i++){
-            res[i]=v[i]/y;
+            res[i]=x[i]/y;
         }
         return res;
     }
@@ -95,7 +95,7 @@ int main(){
 
     vector<3> x = {1,2,3};
     vector<3> y = {4.55,2./3,6*2};
-    vector<3> z = x.direction();
+    vector<3> z = x.hat();
     std::cout<<z;
 
 
